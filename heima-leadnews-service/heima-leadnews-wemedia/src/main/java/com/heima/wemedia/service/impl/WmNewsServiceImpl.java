@@ -22,6 +22,7 @@ import com.heima.utils.common.WmThreadLocalUtils;
 import com.heima.wemedia.mapper.WmMaterialMapper;
 import com.heima.wemedia.mapper.WmNewsMapper;
 import com.heima.wemedia.mapper.WmNewsMaterialMapper;
+import com.heima.wemedia.service.WmNewsAutoScanService;
 import com.heima.wemedia.service.WmNewsService;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
@@ -34,6 +35,8 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 @Service
@@ -46,6 +49,10 @@ public class WmNewsServiceImpl  extends ServiceImpl<WmNewsMapper, WmNews> implem
 
     @Autowired
     private WmMaterialMapper wmMaterialMapper;
+
+    @Autowired
+    private WmNewsAutoScanService wmNewsAutoScanService;
+
 
     /**
      * 查询文章
@@ -131,6 +138,15 @@ public class WmNewsServiceImpl  extends ServiceImpl<WmNewsMapper, WmNews> implem
         saveRelativeInfoForContent(materials,wmNews.getId());
         // 4.不是草稿，保存文章封面和素材的关系
         saveRelativeInfoForCover(dto,wmNews,materials);
+        CompletableFuture<Void> future = CompletableFuture.runAsync(()->{
+            //发起一个异步任务
+            try {
+                TimeUnit.SECONDS.sleep(1);
+                wmNewsAutoScanService.autoScanWmNews(wmNews.getId());
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        });
 
         return ResponseResult.okResult(AppHttpCodeEnum.SUCCESS);
     }

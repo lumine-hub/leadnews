@@ -1,21 +1,33 @@
 package com.heima.article.service.impl;
 
+import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.heima.article.mapper.ApArticleConfigMapper;
+import com.heima.article.mapper.ApArticleContentMapper;
 import com.heima.article.mapper.ApArticleMapper;
 import com.heima.article.service.ApArticleService;
+import com.heima.article.service.ArticleFreemarkerService;
 import com.heima.common.constants.ArticleConstants;
+import com.heima.model.article.dtos.ArticleDto;
 import com.heima.model.article.dtos.ArticleHomeDto;
 
 import com.heima.model.article.pojos.ApArticle;
+import com.heima.model.article.pojos.ApArticleConfig;
+import com.heima.model.article.pojos.ApArticleContent;
 import com.heima.model.common.dtos.ResponseResult;
+import com.heima.model.common.enums.AppHttpCodeEnum;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
+import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.sql.Wrapper;
 import java.util.Date;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
 
 
 @Service
@@ -28,6 +40,13 @@ public class ApArticleServiceImpl  extends ServiceImpl<ApArticleMapper, ApArticl
 
     @Autowired
     private ApArticleMapper apArticleMapper;
+
+    @Autowired
+    private ApArticleContentMapper apArticleContentMapper;
+    @Autowired
+    private ApArticleConfigMapper apArticleConfigMapper;
+    @Autowired
+    private ArticleFreemarkerService articleFreemarkerService;
 
     /**
      * 根据参数加载文章列表
@@ -63,6 +82,43 @@ public class ApArticleServiceImpl  extends ServiceImpl<ApArticleMapper, ApArticl
         //3.结果封装
         ResponseResult responseResult = ResponseResult.okResult(apArticles);
         return responseResult;
+    }
+
+    @Override
+    public ResponseResult saveArticle(ArticleDto dto) {
+        //1.检查参数
+        if (dto == null) {
+            return ResponseResult.errorResult(AppHttpCodeEnum.PARAM_INVALID);
+        }
+        ApArticle apArticle = new ApArticle();
+        BeanUtils.copyProperties(dto, apArticle);
+        if (dto.getId() == null) {
+            //2.1不存在id 保存 文章 配置 文章内容
+            save(apArticle);
+            ApArticleConfig apArticleConfig = new ApArticleConfig(apArticle.getId());
+            apArticleConfigMapper.insert(apArticleConfig);
+            ApArticleContent apArticleContent = new ApArticleContent();
+            apArticleContent.setContent(dto.getContent());
+            apArticleContent.setArticleId(dto.getId());
+            apArticleContentMapper.insert(apArticleContent);
+        } else {
+            //2.2 存在id 修改 文章 文章内容，配置不变
+            updateById(apArticle);
+            ApArticleContent articleContent = apArticleContentMapper.selectOne(Wrappers.<ApArticleContent>lambdaQuery().eq(ApArticleContent::getArticleId, dto.getId()));
+            apArticleContentMapper.updateById(articleContent);
+        }
+
+        CompletableFuture<Void> future = CompletableFuture.runAsync(()->{
+            //发起一个异步任务
+            try {
+                TimeUnit.SECONDS.sleep(1);
+                articleFreemarkerService.buildArticleToMinIO(apArticle, dto.getContent());
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        });
+
+        return ResponseResult.okResult(apArticle.getId());
     }
 
 }
