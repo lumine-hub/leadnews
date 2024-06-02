@@ -4,7 +4,10 @@ import com.alibaba.fastjson.JSON;
 import com.heima.model.common.dtos.ResponseResult;
 import com.heima.model.common.enums.AppHttpCodeEnum;
 import com.heima.model.search.dtos.UserSearchDto;
+import com.heima.model.user.pojos.ApUser;
+import com.heima.search.service.ApUserSearchService;
 import com.heima.search.service.ArticleSearchService;
+import com.heima.utils.common.AppThreadLocalUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.elasticsearch.action.search.SearchRequest;
@@ -24,6 +27,8 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
 
 
 @Service
@@ -33,6 +38,8 @@ public class ArticleSearchServiceImpl implements ArticleSearchService {
     @Autowired
     private RestHighLevelClient restHighLevelClient;
 
+    @Autowired
+    private ApUserSearchService apUserSearchService;
     /**
      * es文章分页检索
      *
@@ -46,6 +53,19 @@ public class ArticleSearchServiceImpl implements ArticleSearchService {
         if(dto == null || StringUtils.isBlank(dto.getSearchWords())){
             return ResponseResult.errorResult(AppHttpCodeEnum.PARAM_INVALID);
         }
+        ApUser user = AppThreadLocalUtils.getUser();
+        if (user != null && dto.getFromIndex() == 0) {
+            CompletableFuture<Void> future = CompletableFuture.runAsync(()->{
+                //发起一个异步任务
+                try {
+                    TimeUnit.SECONDS.sleep(1);
+                    apUserSearchService.insert(dto.getSearchWords(), user.getId());
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+            });
+        }
+
         //2.设置查询条件
         SearchRequest searchRequest = new SearchRequest("app_info_article");
         SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
