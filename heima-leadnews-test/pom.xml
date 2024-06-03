@@ -13,6 +13,7 @@
         <module>minio-demo</module>
         <module>es-demo</module>
         <module>es-init</module>
+        <module>xxljob-demo</module>
     </modules>
     <modelVersion>4.0.0</modelVersion>
 

@@ -13,7 +13,7 @@ public class MinIOTest {
         FileInputStream fileInputStream = null;
         try {
 
-            fileInputStream =  new FileInputStream("F:\\dowloads\\list.html");;
+            fileInputStream =  new FileInputStream("F:\\dowloads\\index.js");;
 
             //1.创建minio链接客户端
             MinioClient minioClient = MinioClient.builder()
@@ -22,14 +22,14 @@ public class MinIOTest {
                     .build();
             //2.上传
             PutObjectArgs putObjectArgs = PutObjectArgs.builder()
-                    .object("list.html")//文件名
-                    .contentType("text/html")//文件类型
-                    .bucket("leadnews2")//桶名词  与minio创建的名词一致
-                    .stream(fileInputStream, fileInputStream.available(), -1) //文件流
+                    .object("plugins/js/index.js")  // 目标路径和文件名
+                    .contentType("application/javascript")  // 根据文件类型设置
+                    .bucket("leadnews")  // 桶名
+                    .stream(fileInputStream, fileInputStream.available(), -1)  // 文件流
                     .build();
             minioClient.putObject(putObjectArgs);
 
-            System.out.println("http://192.168.200.130:9000/leadnews2/ak47.jpg");
+            System.out.println("文件上传成功: http://192.168.200.130:9000/leadnews/plugins/js/index.js");
 
         } catch (Exception ex) {
             ex.printStackTrace();
