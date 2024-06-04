@@ -12,6 +12,7 @@
         <module>freemarker-demo</module>
         <module>minio-demo</module>
         <module>es-demo</module>
+        <module>kafka-demo</module>
         <module>es-init</module>
         <module>xxljob-demo</module>
     </modules>
